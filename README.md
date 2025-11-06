@@ -40,6 +40,17 @@ uvicorn app.main:app --reload
 - Parsing is heuristic; adjust patterns in `app/ocr.py` to fit your bills.
 - If Tesseract is installed in a non-standard path, set the environment variable `TESSERACT_CMD` to the tesseract binary path.
 
+## Deploy to Render (free tier)
+
+1. Push this repository to GitHub (private or public).
+2. Create a free account at [Render](https://render.com) and choose **New > Web Service**.
+3. Connect the GitHub repo, pick the branch you want to deploy, and set **Runtime** to *Docker*. Render will auto-detect the `Dockerfile` in the repo root.
+4. Leave the build command empty (Render will run `docker build`) and the start command blank so the `CMD` in the `Dockerfile` (`uvicorn app.main:app --host 0.0.0.0 --port 8000`) is used.
+5. (Optional but recommended) Add a Persistent Disk with mount path `/app/data` to keep the generated `data/bills.xlsx` between restarts. Without the disk the file resets whenever the service rebuilds.
+6. Click **Create Web Service**. The free plan sleeps after periods of inactivity; the app will wake up automatically on the next request.
+
+The `Dockerfile` installs Tesseract and all Python dependencies so nothing else is required on the Render side. If you customize dependencies, rebuild the service to apply the changes.
+
 ## Project Structure
 
 ```
@@ -54,4 +65,3 @@ static/
 requirements.txt
 README.md
 ```
-
