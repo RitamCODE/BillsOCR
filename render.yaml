@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: bills-ocr
+    env: docker
+    plan: free
+    autoDeploy: true
+    runtimeNetwork: public
+    dockerfilePath: Dockerfile
+    disk:
+      name: bills-data
+      mountPath: /app/data
+      sizeGB: 1

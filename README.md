@@ -42,14 +42,24 @@ uvicorn app.main:app --reload
 
 ## Deploy to Render (free tier)
 
+### Option A: One-click blueprint
+
+1. Push the repo to GitHub/GitLab and note the repo URL.
+2. In Render, go to **Dashboard ▸ New ▸ Blueprint** and paste the repo URL.
+3. Render reads `render.yaml` and proposes a *Web Service* named `bills-ocr` on the free plan using the included `Dockerfile`. Accept the defaults.
+4. (Optional) Keep the `bills-data` disk from the blueprint if you want OCR results to persist across restarts. Disks incur a small charge (~$0.15/GB/mo). Delete the disk before deploying if you prefer ephemeral storage.
+5. Click **Apply** to trigger the initial deploy.
+
+### Option B: Manual web service
+
 1. Push this repository to GitHub (private or public).
 2. Create a free account at [Render](https://render.com) and choose **New > Web Service**.
-3. Connect the GitHub repo, pick the branch you want to deploy, and set **Runtime** to *Docker*. Render will auto-detect the `Dockerfile` in the repo root.
-4. Leave the build command empty (Render will run `docker build`) and the start command blank so the `CMD` in the `Dockerfile` (`uvicorn app.main:app --host 0.0.0.0 --port 8000`) is used.
-5. (Optional but recommended) Add a Persistent Disk with mount path `/app/data` to keep the generated `data/bills.xlsx` between restarts. Without the disk the file resets whenever the service rebuilds.
-6. Click **Create Web Service**. The free plan sleeps after periods of inactivity; the app will wake up automatically on the next request.
+3. Connect the GitHub repo, pick the branch you want to deploy, and set **Runtime** to *Docker*. Render auto-detects the `Dockerfile`.
+4. Leave the build command empty (Render runs `docker build`) and the start command blank so the `CMD` in the `Dockerfile` (`uvicorn app.main:app --host 0.0.0.0 --port 8000`) is used.
+5. (Optional) Add a Persistent Disk with mount path `/app/data` to keep the generated `data/bills.xlsx` between restarts. Without the disk the file resets whenever the service rebuilds.
+6. Click **Create Web Service**. The free plan sleeps after periods of inactivity; the app wakes on the next request.
 
-The `Dockerfile` installs Tesseract and all Python dependencies so nothing else is required on the Render side. If you customize dependencies, rebuild the service to apply the changes.
+The `Dockerfile` installs Tesseract and all Python dependencies so nothing else is required on the Render side. Rebuild the service whenever you change dependencies.
 
 ## Project Structure
 
