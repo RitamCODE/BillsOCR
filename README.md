@@ -47,8 +47,9 @@ uvicorn app.main:app --reload
 1. Push the repo to GitHub/GitLab and note the repo URL.
 2. In Render, go to **Dashboard ▸ New ▸ Blueprint** and paste the repo URL.
 3. Render reads `render.yaml` and proposes a *Web Service* named `bills-ocr` on the free plan using the included `Dockerfile`. Accept the defaults.
-4. (Optional) Keep the `bills-data` disk from the blueprint if you want OCR results to persist across restarts. Disks incur a small charge (~$0.15/GB/mo). Delete the disk before deploying if you prefer ephemeral storage.
-5. Click **Apply** to trigger the initial deploy.
+4. Click **Apply** to trigger the initial deploy.
+
+> ⚠️ Free services cannot attach persistent disks. The app still runs, but the generated `data/bills.xlsx` resets whenever Render rebuilds or restarts the service. Upgrade to a paid plan if you need persistent storage.
 
 ### Option B: Manual web service
 

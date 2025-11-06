@@ -5,7 +5,3 @@ services:
     plan: free
     autoDeploy: true
     dockerfilePath: Dockerfile
-    disk:
-      name: bills-data
-      mountPath: /app/data
-      sizeGB: 1
