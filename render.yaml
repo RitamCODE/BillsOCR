@@ -4,7 +4,6 @@ services:
     env: docker
     plan: free
     autoDeploy: true
-    runtimeNetwork: public
     dockerfilePath: Dockerfile
     disk:
       name: bills-data
