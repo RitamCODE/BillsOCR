@@ -125,8 +125,160 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function parseItemsFromText(text) {
+    if (!text) return [];
+    
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const items = [];
+    
+    // Patterns to identify item lines (not totals, taxes, etc.)
+    const skipPatterns = [
+      /^(SUB\s*TOTAL|TOTAL|SALES\s*TAX|TAX|AMOUNT\s*DUE|GRAND\s*TOTAL|BALANCE\s*DUE)/i,
+      /^(DATE|INVOICE|RECEIPT|BILL|THANK\s*YOU)/i,
+      /^\d{1,2}[\-\/]\d{1,2}[\-\/]\d{2,4}/, // Date patterns
+      /^[A-Z]{2,}\s+\d{5}/, // ZIP codes
+    ];
+    
+    // Price pattern - must be at end, with 2-3 decimals (OCR sometimes adds extra digit)
+    // Prefer $ sign, but also accept numbers with proper spacing
+    const pricePattern = /\$\s*(\d+\.\d{2,3})\s*$|(\d+\.\d{2,3})\s*$/;
+    
+    // Patterns that indicate the line is NOT an item (addresses, codes, etc.)
+    const notItemPatterns = [
+      /^\d+\s+[A-Z][a-z]+\s+(Drive|Street|Avenue|Road|Lane|Blvd|Ave|St|Rd)/i, // Addresses
+      /^[A-Z]{2,}\s+\d{5}(-\d{4})?$/, // ZIP codes
+      /^\d{3,}\s+\d{3}-\d+/, // Phone numbers or codes
+      /^[A-Z0-9]{8,}$/, // Long alphanumeric codes
+      /Auth.*Trace.*Number/i, // Auth/Trace numbers
+    ];
+    
+    // Patterns that indicate a number before the "price" is part of description
+    const descriptionNumberPatterns = [
+      /\d+CT\s*$/, // "24CT", "7CT" - count
+      /\d+PK\s*$/, // "2PK" - pack
+      /\d+\s*SQ\s*FT/i, // "100.8 SQ FT" - area
+      /\d+-\d+/, // "4521-1", "362-0" - codes
+      /[A-Z]\d+[A-Z]\d+/i, // "QO4S9R02" - alphanumeric codes
+      /\d{4,}/, // Long numbers (IDs, codes)
+    ];
+    
+    for (const line of lines) {
+      // Skip summary lines
+      if (skipPatterns.some(pattern => pattern.test(line))) {
+        continue;
+      }
+      
+      // Skip lines that are clearly not items
+      if (notItemPatterns.some(pattern => pattern.test(line))) {
+        continue;
+      }
+      
+      // Try to extract price from the line
+      const priceMatch = line.match(pricePattern);
+      if (priceMatch) {
+        // Get the matched price (either with $ or without)
+        const priceStr = (priceMatch[1] || priceMatch[2] || '').replace(/[,\s]/g, '');
+        const price = parseFloat(priceStr);
+        
+        // Validate price format and range (accept 2-3 decimals, normalize to 2)
+        if (!isNaN(price) && price > 0 && price < 10000 && /^\d+\.\d{2,3}$/.test(priceStr)) {
+          // Extract item name (everything before the price)
+          const itemName = line.substring(0, priceMatch.index).trim();
+          
+          // Check if the price is immediately preceded by description patterns
+          // Only skip if the pattern is right before the price (within last 5 chars)
+          const textBeforePrice = line.substring(Math.max(0, priceMatch.index - 10), priceMatch.index);
+          const hasDescriptionPattern = descriptionNumberPatterns.some(pattern => {
+            // Check if pattern appears in the text right before the price
+            return pattern.test(textBeforePrice);
+          });
+          
+          // Additional validation: price should be preceded by space or separator
+          const charBeforePrice = line[priceMatch.index - 1];
+          
+          // If there's a description pattern right before, check for separator
+          if (hasDescriptionPattern) {
+            // Check if there's a separator (space, |, \, etc.) before the price
+            if (!charBeforePrice || (!/\s/.test(charBeforePrice) && !/[|\\\-]/.test(charBeforePrice))) {
+              continue; // No separator, likely part of description
+            }
+          }
+          
+          // Price should be preceded by space or separator, not directly after alphanumeric
+          if (charBeforePrice && /[A-Za-z0-9]/.test(charBeforePrice) && charBeforePrice !== ' ') {
+            // Check if it's a common separator
+            if (!/[|\\\-]/.test(charBeforePrice)) {
+              continue;
+            }
+          }
+          
+          // Clean up item name
+          let cleanedName = itemName
+            .replace(/[\\|{}]/g, ' ') // Remove separators
+            .replace(/\s+/g, ' ') // Multiple spaces to single
+            .trim();
+          
+          // Remove trailing standalone numbers that are likely quantities/codes
+          // But be careful not to remove numbers that are part of the product name
+          cleanedName = cleanedName.replace(/\s+\d{1,2}(?:[.,]\d+)?\s*$/, '').trim();
+          
+          // Final validation: item name should have some letters
+          if (cleanedName.length > 3 && /[A-Za-z]/.test(cleanedName)) {
+            // Normalize price to 2 decimal places
+            const normalizedPrice = parseFloat(price.toFixed(2));
+            items.push({
+              name: cleanedName,
+              price: normalizedPrice.toFixed(2)
+            });
+          }
+        }
+      }
+    }
+    
+    return items;
+  }
+
   function showDetailModal(result) {
     if (!modal || !modalBody) return;
+    
+    const items = parseItemsFromText(result.raw_text);
+    console.log('Parsed items:', items);
+    const hasItems = items.length > 0;
+    
+    let itemsHtml = '';
+    if (hasItems) {
+      const itemsRows = items.map(item => `
+        <tr>
+          <td class="item-name">${escapeHtml(item.name)}</td>
+          <td class="item-price">$${item.price}</td>
+        </tr>
+      `).join('');
+      
+      itemsHtml = `
+        <div class="detail-section">
+          <h4>Items (${items.length})</h4>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item Name</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsRows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      itemsHtml = `
+        <div class="detail-section">
+          <h4>Items</h4>
+          <p style="color: var(--muted);">No items could be parsed from the receipt.</p>
+        </div>
+      `;
+    }
+    
     modalBody.innerHTML = `
       <div class="detail-section">
         <h4>Filename</h4>
@@ -144,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4>Total</h4>
         <p class="total-large">${formatCurrency(result.total)}</p>
       </div>
+      ${itemsHtml}
       <div class="detail-section">
         <h4>Processed At</h4>
         <p>${new Date(result.processed_at).toLocaleString()}</p>
@@ -161,6 +314,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!modal) return;
     modal.classList.add('hidden');
     console.log('Modal hidden');
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   // Add click handler to file input for debugging

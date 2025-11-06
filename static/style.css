@@ -329,4 +329,55 @@ tbody tr:hover {
   margin: 0;
 }
 
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.items-table thead {
+  background: var(--border);
+}
+
+.items-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 2px solid var(--border);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.items-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.items-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.items-table tbody tr:hover {
+  background: var(--hover);
+}
+
+.items-table .item-name {
+  word-break: break-word;
+  max-width: 400px;
+}
+
+.items-table .item-price {
+  color: var(--success);
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+}
+
 
