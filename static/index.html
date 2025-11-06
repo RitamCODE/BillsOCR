@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BillsOCR</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>BillsOCR</h1>
+      <p>Upload bill images to extract data and export to Excel.</p>
+
+      <form id="upload-form">
+        <label for="file-input" class="file-label">
+          <span id="file-label-text">Choose Files</span>
+          <input id="file-input" type="file" accept="image/*" multiple />
+        </label>
+        <button type="submit">Upload & Extract</button>
+      </form>
+      <div id="selected-files" class="selected-files"></div>
+      <div id="status" class="status"></div>
+
+      <section id="results" class="results">
+        <div class="results-header">
+          <h2>Extraction Results</h2>
+          <div class="actions">
+            <button id="download-btn" class="btn-secondary">Download Excel</button>
+            <button id="clear-btn" class="btn-secondary">Clear All</button>
+          </div>
+        </div>
+        <div id="results-container">
+          <table id="results-table" class="hidden">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Filename</th>
+                <th>Vendor</th>
+                <th>Date</th>
+                <th>Total</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="empty-state" class="empty-state hidden">
+          <p>No bills processed yet. Upload images to get started!</p>
+        </div>
+      </section>
+
+      <!-- Detail Modal -->
+      <div id="detail-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Bill Details</h3>
+            <button class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body" id="modal-body"></div>
+        </div>
+      </div>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+  </html>
+
+
