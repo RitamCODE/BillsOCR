@@ -6,6 +6,7 @@ from typing import Dict, Any
 from io import BytesIO
 from PIL import Image
 import pytesseract
+import requests
 
 
 def _find_tesseract():
@@ -190,7 +191,46 @@ def _guess_vendor(lines: list[str]) -> str:
     return ""
 
 
+def extract_bill_info_from_api(image_bytes: bytes, filename: str | None = None) -> Dict[str, Any]:
+    """
+    Use OCR.space public API for OCR (no key needed for small volume).
+    """
+    api_url = "https://api.ocr.space/parse/image"
+    files = {
+        "file": (filename or "image.png", image_bytes, "image/png")
+    }
+    payload = {
+        "OCREngine": "2",
+        "isTable": "false",
+        "scale": "true",
+        "isReceipt": "true"
+    }
+    resp = requests.post(api_url, files=files, data=payload, timeout=28)
+    data = resp.json()
+    if not data.get("IsErroredOnProcessing") and data.get("ParsedResults"):
+        ocr_text = data['ParsedResults'][0].get('ParsedText', '')
+    else:
+        raise RuntimeError("OCR API error: " + str(data.get("ErrorMessage") or data))
+    lines = [ln for ln in ocr_text.splitlines() if ln.strip()]
+    normalized_text = "\n".join(lines)
+    vendor = _guess_vendor(lines)
+    date_str = _parse_date(normalized_text, lines)
+    amount_str = _parse_amount(normalized_text, lines)
+    return {
+        "filename": filename or "",
+        "vendor": vendor,
+        "date": date_str,
+        "total": amount_str,
+        "raw_text": ocr_text,
+        "processed_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+    }
+
+
 def extract_bill_info_from_image(image_bytes: bytes, filename: str | None = None) -> Dict[str, Any]:
+    # If env var USE_OCR_API is set, use OCR.space API, otherwise Tesseract
+    if os.environ.get("USE_OCR_API", "0") == "1":
+        return extract_bill_info_from_api(image_bytes, filename=filename)
+    
     if not TESSERACT_CMD:
         raise RuntimeError(
             "Tesseract OCR is not installed or not found in PATH.\n"
